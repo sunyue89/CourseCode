@@ -221,7 +221,14 @@ private:
 		vector<int> r(2);
 		//deep copy, is there a better way?
 		vector<vector<Stat>> board = board_;
-		int t = alpha_beta_pruned(board,{0,0},r,true,2,INT_MIN,INT_MAX);
+		vector<int> lpm(2);
+		if(player_lm_.size()<=0){
+			lpm = {static_cast<int>(board.size())/2-1,static_cast<int>(board[0].size())/2};
+		}else{
+			lpm = player_lm_;
+		}
+
+		int t = alpha_beta_pruned(board,{0,0},lpm,r,true,3,INT_MIN,INT_MAX);
 		int i=r[0]+1;
 		int j=r[1]+1;
 
@@ -281,12 +288,12 @@ private:
 		return INT_MAX;
 	}
 
-	int alpha_beta_pruned(vector<vector<Stat>>& board, vector<int> move, vector<int>& dsrd_move, bool maxProg, int depth, int alpha, int beta){ 
+	int alpha_beta_pruned(vector<vector<Stat>>& board, vector<int> m1, vector<int> m2, vector<int>& dsrd_move, bool maxProg, int depth, int alpha, int beta){ 
 		
 		vector<vector<int>> moves;
 
 		if (depth ==0 || scan(board,moves))
-			return get_Heuris_Score(board,move);
+			return get_Heuris_Score(board,m1,m2);
 
 		//debug
 /*
@@ -308,14 +315,14 @@ private:
 				else
 					board[m[0]][m[1]] = Stat::Blue;
 				//cout<<"check1"<<endl;
-				Print(board);
-				int t = alpha_beta_pruned(board,m,dsrd_move,false,depth-1,alpha,beta);
+				//Print(board);
+				int t = alpha_beta_pruned(board,m,m2,dsrd_move,false,depth-1,alpha,beta);
 				board[m[0]][m[1]] = Stat::Empty;
 
 				if(t>bestValue)
 					dsrd_move = m;
 
-				cout<<t<<" "<<bestValue<<" "<<dsrd_move[0]<<" "<<dsrd_move[1]<<endl;
+				//cout<<t<<" "<<bestValue<<" "<<dsrd_move[0]<<" "<<dsrd_move[1]<<endl;
 
 				bestValue = max(bestValue, t);
 				alpha = max(alpha, bestValue);
@@ -332,14 +339,14 @@ private:
 					board[m[0]][m[1]] = Stat::Blue;
 				else
 					board[m[0]][m[1]] = Stat::Red;
-				Print(board);
+				//Print(board);
 
-				int t = alpha_beta_pruned(board,m,dsrd_move,true,depth-1,alpha,beta);
+				int t = alpha_beta_pruned(board,m1,m,dsrd_move,true,depth-1,alpha,beta);
 				board[m[0]][m[1]] = Stat::Empty;
 				//if(t<bestValue)
 					//dsrd_move = m;
 
-				cout<<t<<" "<<bestValue<<endl;
+				//cout<<t<<" "<<bestValue<<endl;
 
 
 				bestValue = min(bestValue, t);
@@ -353,11 +360,11 @@ private:
 		
 	}
 
-	int get_Heuris_Score(vector<vector<Stat>>& board, vector<int>& move){
-		int playerScore = getScoreForPath(board, move, player_lb_);
-		cout<<playerScore<<" ";
-		int progScore = getScoreForPath(board,move, 1-player_lb_);
-		cout<<progScore<<endl;
+	int get_Heuris_Score(vector<vector<Stat>>& board, vector<int>& m1, vector<int>& m2){
+		int playerScore = getScoreForPath(board, m2, player_lb_);
+		//cout<<playerScore<<endl;
+		int progScore = getScoreForPath(board, m1, 1-player_lb_);
+		//cout<<progScore<<endl;
 		return playerScore-progScore;
 	}
 
@@ -373,6 +380,7 @@ private:
 		Cost[move[0]][move[1]] = 0;
 		pq.push({0,{move[0],move[1]}});
 		bool l=false, h=false;
+		int tl = INT_MAX, th = INT_MAX;
 
 		while(!pq.empty()){
 			pi top = pq.top();
@@ -381,20 +389,33 @@ private:
 			int i = top.second.first;
 			int j = top.second.second;
 
+			//debug djkstra's shortest path algo
+			//cout<<t<<" "<<i<<" "<<j<<" "<<sc<<endl;
+
+
 			if(t==0){
-				if(j==0)
+				if(j==0){
 					l = true;
-				if(j==board_[0].size()-1)
+					tl = min(tl,sc);
+				}
+				if(j==board_[0].size()-1){
 					h = true;
+					th = min(th,sc);
+				}
 			}else{
-				if(i==0)
+				if(i==0){
 					l = true;
-				if(i==board_.size()-1)
+					tl = min(tl,sc);
+				}
+				if(i==board_.size()-1){
 					h = true;
+					th = min(th,sc);
+				}
 			}
 
-			if(l&&h)
-				return sc;
+			if(l&&h){
+				return tl+th;
+			}
 
 			for(auto n:ngb){
 				int k = n[0];
